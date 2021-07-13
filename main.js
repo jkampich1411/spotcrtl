@@ -6,11 +6,10 @@ const fs = require("fs")
 const https = require("https");
 const { post } = require("request");
 
-//Idk for what I used that lol
-const fillervariable = "literally nothing, i dont care either"
-var apires = fillervariable;
+var spotifyrestoken = "";
 
 //Config File Setup
+const cfg = JSON.parse(fs.readFileSync('./cfg.json', 'utf8'))
 const raspotifyName= cfg.raspname;
 const webport= cfg.webport;
 const redirect_uri = cfg.redirUri;
@@ -29,6 +28,12 @@ function deblog(text, lvl) {
     else if (lvl ===4) {
         console.log(`CRITICAL: ${text}`);
     }
+}
+
+//ExchangeHelper
+
+function returnExchange(resp) {
+    return spotifyrestoken = JSON.parse(resp.body)
 }
 
 //Test if Cfg is setup
@@ -52,31 +57,26 @@ app.get('/spotify/auth', (req,res)=> {
 //Spotify Callback Work in Progress
 app.get('/spotify/callback', (req,res)=> {
 
-    var clencr= Buffer.from(`${cfg.clientID}:${cfg.secret}`).toString('base64');
-
+    let clencr= Buffer.from(`${cfg.clientID}:${cfg.secret}`).toString('base64');
     let exchangeValue = `grant_type=authorization_code&code=${req.query.code}&redirect_uri=${redirect_uri}`
 
-    function exchangeToken(postData) {
-        const opt = {
-            uri: 'https://accounts.spotify.com/api/token',
-            body: postData,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + clencr
-            }
+    let opt = {
+        uri: 'https://accounts.spotify.com/api/token',
+        body: exchangeValue,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Basic ' + clencr
         }
-        request(opt, (error, respons) => {
-            apires = respons;
-
-            deblog(`${error} ${respons.body}`, 1);
-            return;
-        });
     }
-    exchangeToken(exchangeValue)
-
-    deblog(apires)
-    res.send("llel")
+    request(opt, (error, respons) => {
+        deblog(`${error} ${respons.body}`, 1);
+        return respons;
+    }).then((respons) => {
+        returnExchange(respons)
+    }).then((spotifyrestoken) => {
+        res.send(`recieved text: ${spotifyrestoken.access_token}`)
+    });
 })
 
 
